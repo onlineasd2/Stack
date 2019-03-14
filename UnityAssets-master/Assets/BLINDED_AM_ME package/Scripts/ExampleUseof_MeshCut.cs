@@ -31,7 +31,7 @@ public class ExampleUseof_MeshCut : MonoBehaviour {
                     pieces[1].AddComponent<Collider>();
                     */
 
-				Destroy(pieces[1], 3);
+				Destroy(pieces[1], 1);
 
             }
             cut = false;
