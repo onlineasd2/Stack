@@ -7,6 +7,7 @@ public class TheStack : MonoBehaviour {
     public Material cupM;
     public Transform cutObjectT;
     public GameObject exampleCube;
+    public Transform target;
 
     public GameObject lastGameMesh;
     public List<Material> lastMaterialObject;
@@ -17,8 +18,6 @@ public class TheStack : MonoBehaviour {
     private const float BOUNDS_SIZE = 3.5f;
     private const float STACK_MOVING_SPEED = 5.0f;
     private const float ERROR_MARGIN = 0.1f;
-    private const float STACK_BOUNDS_GAIN = 0.25f;
-    private const int COMBO_START_GAIN = 3;
 
     private GameObject[] theStack;
     private GameObject fakeBlock;
@@ -28,7 +27,7 @@ public class TheStack : MonoBehaviour {
     private int scoreCount = 0;
     private int combo = 0;
     private int countPieces = 0;
-    public int downCount = 1;
+    public int downCount = 0;
 
     private float tileTransition = 0.0f;
     private float tileSpeed = 2.5f;
@@ -36,6 +35,7 @@ public class TheStack : MonoBehaviour {
 
     private bool isMovingOnX = true;
     private bool gameOver = false;
+    private bool skipFistBlock = false;
 
     private Vector3 desiredPostition;
     private Vector3 lastTilePosition;
@@ -81,13 +81,6 @@ public class TheStack : MonoBehaviour {
 
         // Move the stack
         transform.position = Vector3.Lerp(transform.position, desiredPostition, STACK_MOVING_SPEED * Time.deltaTime);
-      /*  
-        for (int i = theListPieces.Count; i > 0; i--)
-            theListPieces[i].transform.position = new Vector3(
-                theListPieces[i].transform.position.x,
-                theListPieces[i].transform.position.y - downCount,
-                theListPieces[i].transform.position.z);
-                */
     }
 
     private void MoveTile ()
@@ -105,6 +98,7 @@ public class TheStack : MonoBehaviour {
     private GameObject FakeBlockSpawn ()
     {
         fakeBlock = Instantiate(lastGameMesh, theStack[stackIndex].transform.position, Quaternion.identity);
+        //fakeBlock.transform.SetParent(theStack[stackIndex].transform);
 
         if (listFakeBlocks.Count >= 1)
         {
@@ -150,10 +144,10 @@ public class TheStack : MonoBehaviour {
         // Adding Material
         Material[] mats = new Material[lastMaterialObject.Count];
         for (int i = 0; i < lastMaterialObject.Count; i++)
-            mats[i] = lastMaterialObject[i];
+            mats[i] = cupM;
         theStack[stackIndex].GetComponent<MeshRenderer>().materials = mats;
         // Adding Material
-
+        
         // Change scale 
         cutObjectT.transform.localScale = theStack[stackIndex].transform.localScale;
 
@@ -164,6 +158,8 @@ public class TheStack : MonoBehaviour {
     private bool PlaceTile ()
     {
         Transform t = theStack[stackIndex].transform;
+        target.SetParent(theStack[stackIndex].transform);
+        target.position = lastTilePosition;
 
         if (isMovingOnX) // X
         {
@@ -179,19 +175,24 @@ public class TheStack : MonoBehaviour {
                 float middle = lastTilePosition.x + t.localPosition.x / 2;
 
                 // CUT
-
                 GameObject stack = Instantiate(theStack[stackIndex], t.transform.position, Quaternion.identity);
 
-                if (t.localPosition.x > 0)
+                float dist0 = theStack[stackIndex].transform.position.x * tileTransition;
+
+                if (t.localPosition.x >= target.position.x)
                 {
                     GameObject[] pieces = BLINDED_AM_ME.MeshCut.Cut(
-                    stack
-                    , new Vector3(
-                        cutObjectT.GetChild(0).position.x,
-                        theStack[stackIndex].transform.position.y,
-                        cutObjectT.GetChild(0).position.z)
-                    , transform.right
-                    , cupM);
+                        stack
+                        , new Vector3(
+                            cutObjectT.GetChild(0).position.x,
+                            Mathf.Floor(theStack[stackIndex].transform.position.y),
+                            cutObjectT.GetChild(0).position.z)
+                        , transform.right
+                        , cupM);
+
+
+                    //Debug.Log(t.localPosition.x);
+                    //Debug.Log("1");
 
                     if (!pieces[1].GetComponent<Rigidbody>())
                         pieces[1].AddComponent<Rigidbody>();
@@ -211,13 +212,16 @@ public class TheStack : MonoBehaviour {
                 } else
                 {
                     GameObject[] pieces = BLINDED_AM_ME.MeshCut.Cut(
-                    stack
-                    , new Vector3(
-                        cutObjectT.GetChild(1).position.x,
-                        theStack[stackIndex].transform.position.y,
-                        cutObjectT.GetChild(1).position.z)
-                    , -transform.right
-                    , cupM);
+                        stack
+                        , new Vector3(
+                            cutObjectT.GetChild(1).position.x,
+                            Mathf.Floor(theStack[stackIndex].transform.position.y),
+                            cutObjectT.GetChild(1).position.z)
+                        , -transform.right
+                        , cupM);
+
+                    Debug.Log(t.position.x);
+                    Debug.Log("2");
 
                     if (!pieces[1].GetComponent<Rigidbody>())
                         pieces[1].AddComponent<Rigidbody>();
@@ -231,42 +235,19 @@ public class TheStack : MonoBehaviour {
                     
                     theStack[stackIndex].GetComponent<MeshRenderer>().enabled = false;
                     
-                    lastGameMesh = pieces[0];  // NEXT MESH
-
-                    //Debug.Log(theListPieces[0].GetComponent<MeshRenderer>().materials.Length);
-
-                    theListPieces[countPieces].transform.position = new Vector3(
-                        theListPieces[countPieces].transform.position.x,
-                        downCount -= 1,
-                        theListPieces[countPieces].transform.position.z);
-                    countPieces++;
+                    lastGameMesh = pieces[0];  // NEXT MESH  
 
                     Destroy(pieces[1], 1);
                 }
 
                 // CUT
+
                 // Scale
 
                 t.localScale = new Vector3(stackBounds.x, 1, stackBounds.y);
                 t.localPosition = new Vector3(middle - (lastTilePosition.x / 2), scoreCount, lastTilePosition.z);
                 // Scale
              }
-            else
-            { // Scaling tile
-                if (combo > COMBO_START_GAIN)
-                {
-                    if (stackBounds.x > BOUNDS_SIZE)
-                        stackBounds.x = BOUNDS_SIZE;
-
-                    stackBounds.x += STACK_BOUNDS_GAIN;
-                    float middle = lastTilePosition.x + t.localPosition.x / 2;
-                    t.localScale = new Vector3(stackBounds.x, 1, stackBounds.y);
-                    t.localPosition = new Vector3(middle - (lastTilePosition.x / 2), scoreCount, lastTilePosition.z);
-                }
-
-                combo++;
-                t.localPosition = new Vector3(lastTilePosition.x, scoreCount, lastTilePosition.z);
-            }
         }
         else // Z
         {
@@ -283,22 +264,31 @@ public class TheStack : MonoBehaviour {
 
                 GameObject stack = Instantiate(theStack[stackIndex], t.position, t.rotation);
 
-                if (t.localPosition.z < 0)
+                float dist0 = theStack[stackIndex].transform.position.z * tileTransition;
+
+                if (t.localPosition.z <= target.position.z)
                 {
                     GameObject[] pieces = BLINDED_AM_ME.MeshCut.Cut(
                         stack
                         , new Vector3(
                             cutObjectT.GetChild(2).position.x,
-                            theStack[stackIndex].transform.position.y,
+                            Mathf.Floor(theStack[stackIndex].transform.position.y),
                             cutObjectT.GetChild(2).position.z)
                         , -transform.forward
                         , cupM);
+
+                    Debug.Log(t.position.z);
+                    Debug.Log("3");
 
                     if (!pieces[1].GetComponent<Rigidbody>())
                         pieces[1].AddComponent<Rigidbody>();
 
                     theListPieces.Add(pieces[0]);
-                    
+                    // MATERIAL
+                    lastMaterialObject.Clear();
+                    for (int i = 0; i < pieces[0].GetComponent<MeshRenderer>().materials.Length; i++)
+                        lastMaterialObject.Add(pieces[0].GetComponent<MeshRenderer>().materials[i]);
+
                     theStack[stackIndex].GetComponent<MeshRenderer>().enabled = false;
 
                     lastGameMesh = pieces[0];  // NEXT MESH
@@ -308,48 +298,54 @@ public class TheStack : MonoBehaviour {
                 else
                 {
                     GameObject[] pieces = BLINDED_AM_ME.MeshCut.Cut(
-                    stack
-                    , new Vector3(
-                        cutObjectT.GetChild(3).position.x,
-                        theStack[stackIndex].transform.position.y,
-                        cutObjectT.GetChild(3).position.z)
-                    , transform.forward
-                    , cupM);
+                        stack
+                        , new Vector3(
+                            cutObjectT.GetChild(3).position.x,
+                            Mathf.Floor(theStack[stackIndex].transform.position.y),
+                            cutObjectT.GetChild(3).position.z)
+                        , transform.forward
+                        , cupM);
+
+                    Debug.Log(t.position.z);
+                    Debug.Log("4");
 
                     if (!pieces[1].GetComponent<Rigidbody>())
                         pieces[1].AddComponent<Rigidbody>();
 
                     theListPieces.Add(pieces[0]);
-                    
+
+                    // MATERIAL
+                    lastMaterialObject.Clear();
+                    for (int i = 0; i < pieces[0].GetComponent<MeshRenderer>().materials.Length; i++)
+                        lastMaterialObject.Add(pieces[0].GetComponent<MeshRenderer>().materials[i]);
+
                     theStack[stackIndex].GetComponent<MeshRenderer>().enabled = false;
 
                     lastGameMesh = pieces[0];  // NEXT MESH
 
                     Destroy(pieces[1], 1);
                 }
-                // CUT
 
                 // Scale
                 t.localScale = new Vector3(stackBounds.x, 1, stackBounds.y);
                 t.localPosition = new Vector3(lastTilePosition.x, scoreCount, middle - (lastTilePosition.z / 2));
                 // Scale
             }
-            else
-            { // Scaling tile
-                if (combo > COMBO_START_GAIN)
-                {
-                    stackBounds.y += STACK_BOUNDS_GAIN;
-                    if (stackBounds.y > BOUNDS_SIZE)
-                        stackBounds.y = BOUNDS_SIZE;
 
-                    float middle = lastTilePosition.z + t.localPosition.z / 2;
-                    t.localScale = new Vector3(stackBounds.x, 1, stackBounds.y);
-                    t.localPosition = new Vector3(lastTilePosition.x, scoreCount, middle - (lastTilePosition.z / 2));
-                }
-                combo++;
-                t.localPosition = lastTilePosition + Vector3.up;
-            }
         }
+
+        // MOVE PIECE
+
+        if (skipFistBlock)
+            for (int i = 0; i < theListPieces.Count; i++)
+                theListPieces[i].transform.position = new Vector3
+                    (
+                        theListPieces[i].transform.position.x,
+                        Mathf.Floor(theListPieces[i].transform.position.y - 1f),
+                        theListPieces[i].transform.position.z
+                    );
+
+        skipFistBlock = true;
 
         cutObjectT.position = t.position;
 
@@ -398,6 +394,7 @@ public class TheStack : MonoBehaviour {
     {
         Debug.Log("Lose");
         gameOver = true;
+        
         theStack[stackIndex].AddComponent<Rigidbody>();
     }
 }
