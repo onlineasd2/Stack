@@ -3,7 +3,9 @@ using System.Collections;
 using System.Collections.Generic;
 
 public class TheStack : MonoBehaviour {
-    
+
+    public Camera cam;
+
     public Material cupM;
     public Transform cutObjectT;
     public GameObject exampleCube;
@@ -17,7 +19,7 @@ public class TheStack : MonoBehaviour {
 
     private const float BOUNDS_SIZE = 3.5f;
     private const float STACK_MOVING_SPEED = 5.0f;
-    private const float ERROR_MARGIN = 0.1f;
+    private const float ERROR_MARGIN = 0.15f;
 
     private GameObject[] theStack;
     private GameObject fakeBlock;
@@ -80,7 +82,7 @@ public class TheStack : MonoBehaviour {
         MoveFakeingBlock();
 
         // Move the stack
-        transform.position = Vector3.Lerp(transform.position, desiredPostition, STACK_MOVING_SPEED * Time.deltaTime);
+        transform.position = desiredPostition;
     }
 
     private void MoveTile ()
@@ -166,7 +168,6 @@ public class TheStack : MonoBehaviour {
             float deltaX = lastTilePosition.x - t.position.x;
             if (Mathf.Abs(deltaX) > ERROR_MARGIN)
             {
-
                 combo = 0;
                 stackBounds.x -= Mathf.Abs(deltaX);
                 if (stackBounds.x <= 0)
@@ -176,8 +177,6 @@ public class TheStack : MonoBehaviour {
 
                 // CUT
                 GameObject stack = Instantiate(theStack[stackIndex], t.transform.position, Quaternion.identity);
-
-                float dist0 = theStack[stackIndex].transform.position.x * tileTransition;
 
                 if (t.localPosition.x >= target.position.x)
                 {
@@ -190,12 +189,14 @@ public class TheStack : MonoBehaviour {
                         , transform.right
                         , cupM);
 
-
                     //Debug.Log(t.localPosition.x);
                     //Debug.Log("1");
-
+                    
                     if (!pieces[1].GetComponent<Rigidbody>())
                         pieces[1].AddComponent<Rigidbody>();
+
+                    Destroy(pieces[0].GetComponent<BoxCollider>());
+                    pieces[1].AddComponent<BoxCollider>();
 
                     theListPieces.Add(pieces[0]);
 
@@ -203,9 +204,7 @@ public class TheStack : MonoBehaviour {
                     lastMaterialObject.Clear();
                     for (int i = 0; i < pieces[0].GetComponent<MeshRenderer>().materials.Length; i++)
                         lastMaterialObject.Add(pieces[0].GetComponent<MeshRenderer>().materials[i]);
-
-                    theStack[stackIndex].GetComponent<MeshRenderer>().enabled = false;
-
+                    
                     lastGameMesh = pieces[0]; // NEXT MESH
                     
                     Destroy(pieces[1], 1);
@@ -223,6 +222,9 @@ public class TheStack : MonoBehaviour {
                     Debug.Log(t.position.x);
                     Debug.Log("2");
 
+                    Destroy(pieces[0].GetComponent<BoxCollider>());
+                    pieces[1].AddComponent<BoxCollider>();
+
                     if (!pieces[1].GetComponent<Rigidbody>())
                         pieces[1].AddComponent<Rigidbody>();
 
@@ -233,8 +235,6 @@ public class TheStack : MonoBehaviour {
                     for (int i = 0; i < pieces[0].GetComponent<MeshRenderer>().materials.Length; i++)
                         lastMaterialObject.Add(pieces[0].GetComponent<MeshRenderer>().materials[i]);
                     
-                    theStack[stackIndex].GetComponent<MeshRenderer>().enabled = false;
-                    
                     lastGameMesh = pieces[0];  // NEXT MESH  
 
                     Destroy(pieces[1], 1);
@@ -244,10 +244,20 @@ public class TheStack : MonoBehaviour {
 
                 // Scale
 
+                theStack[stackIndex].GetComponent<MeshRenderer>().enabled = false;
+
                 t.localScale = new Vector3(stackBounds.x, 1, stackBounds.y);
                 t.localPosition = new Vector3(middle - (lastTilePosition.x / 2), scoreCount, lastTilePosition.z);
                 // Scale
-             }
+            } else
+            {
+                lastMaterialObject.Clear();
+                for (int i = 0; i < theStack[stackIndex].GetComponent<MeshRenderer>().materials.Length; i++)
+                    lastMaterialObject.Add(theStack[stackIndex].GetComponent<MeshRenderer>().materials[i]);
+
+                t.localPosition = new Vector3(lastTilePosition.x, scoreCount, lastTilePosition.z);
+                theStack[stackIndex].GetComponent<MeshRenderer>().enabled = true;
+            }
         }
         else // Z
         {
@@ -264,8 +274,6 @@ public class TheStack : MonoBehaviour {
 
                 GameObject stack = Instantiate(theStack[stackIndex], t.position, t.rotation);
 
-                float dist0 = theStack[stackIndex].transform.position.z * tileTransition;
-
                 if (t.localPosition.z <= target.position.z)
                 {
                     GameObject[] pieces = BLINDED_AM_ME.MeshCut.Cut(
@@ -280,6 +288,9 @@ public class TheStack : MonoBehaviour {
                     Debug.Log(t.position.z);
                     Debug.Log("3");
 
+                    Destroy(pieces[0].GetComponent<BoxCollider>());
+                    pieces[1].AddComponent<BoxCollider>();
+
                     if (!pieces[1].GetComponent<Rigidbody>())
                         pieces[1].AddComponent<Rigidbody>();
 
@@ -288,8 +299,6 @@ public class TheStack : MonoBehaviour {
                     lastMaterialObject.Clear();
                     for (int i = 0; i < pieces[0].GetComponent<MeshRenderer>().materials.Length; i++)
                         lastMaterialObject.Add(pieces[0].GetComponent<MeshRenderer>().materials[i]);
-
-                    theStack[stackIndex].GetComponent<MeshRenderer>().enabled = false;
 
                     lastGameMesh = pieces[0];  // NEXT MESH
 
@@ -309,6 +318,9 @@ public class TheStack : MonoBehaviour {
                     Debug.Log(t.position.z);
                     Debug.Log("4");
 
+                    Destroy(pieces[0].GetComponent<BoxCollider>());
+                    pieces[1].AddComponent<BoxCollider>();
+
                     if (!pieces[1].GetComponent<Rigidbody>())
                         pieces[1].AddComponent<Rigidbody>();
 
@@ -318,18 +330,26 @@ public class TheStack : MonoBehaviour {
                     lastMaterialObject.Clear();
                     for (int i = 0; i < pieces[0].GetComponent<MeshRenderer>().materials.Length; i++)
                         lastMaterialObject.Add(pieces[0].GetComponent<MeshRenderer>().materials[i]);
-
-                    theStack[stackIndex].GetComponent<MeshRenderer>().enabled = false;
-
+                    
                     lastGameMesh = pieces[0];  // NEXT MESH
 
                     Destroy(pieces[1], 1);
                 }
+                
+                theStack[stackIndex].GetComponent<MeshRenderer>().enabled = false;
 
                 // Scale
                 t.localScale = new Vector3(stackBounds.x, 1, stackBounds.y);
                 t.localPosition = new Vector3(lastTilePosition.x, scoreCount, middle - (lastTilePosition.z / 2));
                 // Scale
+            } else
+            {
+                lastMaterialObject.Clear();
+                for (int i = 0; i < theStack[stackIndex].GetComponent<MeshRenderer>().materials.Length; i++)
+                    lastMaterialObject.Add(theStack[stackIndex].GetComponent<MeshRenderer>().materials[i]);
+
+                t.localPosition = new Vector3(lastTilePosition.x, scoreCount, lastTilePosition.z);
+                theStack[stackIndex].GetComponent<MeshRenderer>().enabled = true;
             }
 
         }
@@ -338,12 +358,23 @@ public class TheStack : MonoBehaviour {
 
         if (skipFistBlock)
             for (int i = 0; i < theListPieces.Count; i++)
+            {
                 theListPieces[i].transform.position = new Vector3
                     (
                         theListPieces[i].transform.position.x,
                         Mathf.Floor(theListPieces[i].transform.position.y - 1f),
                         theListPieces[i].transform.position.z
                     );
+                if (theListPieces[i].transform.position.y > 12)
+                {
+                    Destroy(theListPieces[i]);
+                    theListPieces.Clear();
+                    Debug.Log("Clear");
+                }
+
+                theListPieces[i].GetComponent<MeshRenderer>().enabled = true;
+            }
+
 
         skipFistBlock = true;
 
@@ -396,5 +427,7 @@ public class TheStack : MonoBehaviour {
         gameOver = true;
         
         theStack[stackIndex].AddComponent<Rigidbody>();
+        fakeBlock.GetComponent<BoxCollider>().enabled = false;
+        fakeBlock.GetComponent<MeshRenderer>().enabled = false;
     }
 }
